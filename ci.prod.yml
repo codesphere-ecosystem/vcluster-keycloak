@@ -1,0 +1,55 @@
+schemaVersion: v0.2
+
+prepare:
+  steps: []
+
+test:
+  steps: []
+
+run:
+  keycloak-deployer:
+    plan: 201
+    replicas: 1
+    network:
+      ports:
+        - port: 3000
+          isPublic: false
+      paths: []
+    env:
+      KEYCLOAK_ADMIN_PASSWORD: ${{ vault.KEYCLOAK_ADMIN_PASSWORD }}
+      KEYCLOAK_DB_PASSWORD: ${{ vault.KEYCLOAK_DB_PASSWORD }}
+      TEAM_ID: ${{ team.id }}
+    steps:
+      - name: Create namespace
+        command: kubectl create namespace keycloak --dry-run=client -o yaml | kubectl
+          apply -f -
+      - name: Deploy Keycloak to vCluster
+        command: helm upgrade --install keycloak
+          oci://ghcr.io/codecentric/helm-charts/keycloakx --namespace keycloak
+          --create-namespace -f values.yaml -f values.prod.yaml
+          --set-string extraEnvFromValues.adminPassword=$KEYCLOAK_ADMIN_PASSWORD
+          --set-string extraEnvFromValues.hostname=$WORKSPACE_DEV_DOMAIN
+          --set database.hostname=ms-postgres-v1-$TEAM_ID-landscape-$WORKSPACE_ID-postgres.ms-postgres
+          --set-string database.password=$KEYCLOAK_DB_PASSWORD --wait --timeout 10m
+  postgres:
+    provider:
+      name: postgres
+      version: v1
+    plan:
+      id: 0
+      parameters:
+        cpu: 1
+        memory: 500
+    config:
+      version: "17.6"
+      userName: keycloak
+      databaseName: keycloak
+    secrets:
+      userPassword: ${{ vault.KEYCLOAK_DB_PASSWORD }}
+      superuserPassword: ${{ vault.KEYCLOAK_DB_PASSWORD }}
+  keycloak-headless:
+    network:
+      paths:
+        - path: /
+          stripPath: false
+          target: http://keycloak-keycloakx-http-x-keycloak-x-k8s.rg-${{ team.id }}.svc.cluster.local:80

@@ -1,0 +1,36 @@
+schemaVersion: v0.2
+
+prepare:
+  steps: []
+
+test:
+  steps: []
+
+run:
+  keycloak-deployer:
+    plan: 201
+    replicas: 1
+    network:
+      ports:
+        - port: 3000
+          isPublic: false
+      paths: []
+    env:
+      KEYCLOAK_ADMIN_PASSWORD: ${{ vault.KEYCLOAK_ADMIN_PASSWORD }}
+    steps:
+      - name: Create namespace
+        command: kubectl create namespace keycloak --dry-run=client -o yaml | kubectl
+          apply -f -
+      - name: Deploy Keycloak to vCluster
+        command: helm upgrade --install keycloak
+          oci://ghcr.io/codecentric/helm-charts/keycloakx --namespace keycloak
+          --create-namespace -f values.yaml --set-string
+          extraEnvFromValues.adminPassword=$KEYCLOAK_ADMIN_PASSWORD --set-string
+          extraEnvFromValues.hostname=$WORKSPACE_DEV_DOMAIN --wait --timeout 10m
+  keycloak-headless:
+    network:
+      paths:
+        - path: /
+          stripPath: false
+          target: http://keycloak-keycloakx-http-x-keycloak-x-k8s.rg-${{ team.id }}.svc.cluster.local:80
+  

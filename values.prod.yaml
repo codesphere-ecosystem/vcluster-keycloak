@@ -1,0 +1,15 @@
+database:
+  vendor: postgres
+  port: 5432
+  database: keycloak
+  username: keycloak
+
+dbchecker:
+  enabled: true
+  securityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    runAsUser: 1000
+    capabilities:
+      drop:
+        - ALL

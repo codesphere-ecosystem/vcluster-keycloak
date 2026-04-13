@@ -1,0 +1,34 @@
+command:
+  - "/opt/keycloak/bin/kc.sh"
+  - "start-dev"
+  - "--http-port=8080"
+  - "--hostname-strict=false"
+
+extraEnvFromValues:
+  adminPassword: ""
+  hostname: ""
+
+extraEnv: |
+  - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+    value: {{ .Values.extraEnvFromValues.adminPassword | quote }}
+  - name: KC_BOOTSTRAP_ADMIN_USERNAME
+    value: admin
+  - name: KC_HOSTNAME
+    value: {{ .Values.extraEnvFromValues.hostname | quote }}
+
+proxy:
+  enabled: true
+  mode: xforwarded
+
+podSecurityContext:
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  runAsUser: 1000
+  capabilities:
+    drop:
+      - ALL
